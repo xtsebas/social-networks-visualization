@@ -16,11 +16,11 @@ def prepare_classification_data(df):
     df_model = df.copy()
     df_model['engagement'] = df_model['likeCount'] + df_model['retweetCount'] + df_model['replyCount']
     df_model['high_engagement'] = (df_model['engagement'] > df_model['engagement'].median()).astype(int)
-    
-    features = ['hora', 'dia', 'mes_num', 'retweetCount', 'likeCount', 'replyCount']
+
+    features = ['hora', 'dia', 'mes_num', 'retweetCount']
     X = df_model[features].fillna(0)
     y = df_model['high_engagement']
-    
+
     return train_test_split(X, y, test_size=0.3, random_state=42)
 
 def train_models(X_train, X_test, y_train, y_test):
@@ -98,22 +98,47 @@ app.layout = html.Div([
         
         dcc.Tab(label='Modelos Predictivos', children=[
             html.Div([
-                html.Label("Seleccionar Modelo:"),
-                dcc.Dropdown(
-                    id='model-selector',
-                    options=[{'label': m, 'value': m} for m in models_results.keys()],
-                    value=list(models_results.keys())[0]
-                )
-            ], style={'padding': '20px'}),
-            
+                html.Div([
+                    html.H4("Objetivo del Modelo", style={'color': '#2c3e50', 'marginBottom': '10px'}),
+                    html.P(
+                        "Este modelo intenta predecir si un tweet sobre tráfico tendrá alto engagement "
+                        "(muchos likes, retweets y replies) basándose en características temporales y en el número de retweets.",
+                        style={'marginBottom': '15px', 'lineHeight': '1.6'}
+                    ),
+                    html.H5("Features utilizados:", style={'marginTop': '15px', 'marginBottom': '10px'}),
+                    html.Ul([
+                        html.Li("Hora del tweet (0-23): La hora del día en que se publica"),
+                        html.Li("Día de la semana (1-7): Lunes, martes, etc."),
+                        html.Li("Mes del año (1-12): El mes en que se publica"),
+                        html.Li("Retweet Count: Cantidad de retweets recibidos")
+                    ], style={'marginBottom': '15px'}),
+                    html.H5("Variable objetivo:", style={'marginTop': '15px', 'marginBottom': '10px'}),
+                    html.Ul([
+                        html.Li("Alto engagement (1): Engagement por encima de la mediana"),
+                        html.Li("Bajo engagement (0): Engagement por debajo de la mediana")
+                    ]),
+                ], style={'padding': '20px', 'backgroundColor': '#ecf0f1', 'borderRadius': '5px', 'marginBottom': '20px'}),
+
+                html.Div([
+                    html.Label("Seleccionar Modelo:", style={'fontWeight': 'bold'}),
+                    dcc.Dropdown(
+                        id='model-selector',
+                        options=[{'label': m, 'value': m} for m in models_results.keys()],
+                        value=list(models_results.keys())[0]
+                    )
+                ], style={'padding': '20px'}),
+            ]),
+
             html.Div([
                 html.Div([
                     html.H3(id='accuracy-text'),
+                    html.P(id='accuracy-caption', style={'fontSize': '14px', 'color': '#7f8c8d', 'marginTop': '-10px'}),
                     dcc.Graph(id='confusion-matrix')
                 ], style={'width': '48%', 'display': 'inline-block'}),
-                
+
                 html.Div([
                     html.H3("Métricas del Modelo"),
+                    html.P("Detalles de rendimiento: Precisión, Recall y F1-Score", style={'fontSize': '14px', 'color': '#7f8c8d', 'marginTop': '-10px'}),
                     html.Div(id='metrics-table')
                 ], style={'width': '48%', 'float': 'right', 'display': 'inline-block'})
             ])
@@ -171,19 +196,21 @@ def update_exploration(selected_months, selected_days):
 
 @app.callback(
     [Output('accuracy-text', 'children'),
+     Output('accuracy-caption', 'children'),
      Output('confusion-matrix', 'figure'),
      Output('metrics-table', 'children')],
     [Input('model-selector', 'value')]
 )
 def update_model(selected_model):
     accuracy_text = f"Accuracy: {models_results[selected_model]['accuracy']:.2%}"
-    
+    accuracy_caption = "Porcentaje de predicciones correctas del modelo en datos de prueba"
+
     cm = models_results[selected_model]['confusion_matrix']
     fig_cm = px.imshow(cm, text_auto=True, title=f"Matriz de Confusión - {selected_model}", labels=dict(x="Predicción", y="Real", color="Cantidad"), color_continuous_scale='Blues')
-    
+
     report = classification_report(y_test, models_results[selected_model]['predictions'], output_dict=True)
     df_report = pd.DataFrame(report).transpose()
-    
+
     table = html.Table([
         html.Thead(html.Tr([html.Th(col) for col in df_report.columns])),
         html.Tbody([
@@ -191,8 +218,8 @@ def update_model(selected_model):
             for i in range(len(df_report))
         ])
     ])
-    
-    return accuracy_text, fig_cm, table
+
+    return accuracy_text, accuracy_caption, fig_cm, table
 
 @app.callback(
     [Output('comparison-table', 'children'),

@@ -17,11 +17,11 @@ def prepare_classification_data(df):
     df_model = df.copy()
     df_model['engagement'] = df_model['likeCount'] + df_model['retweetCount'] + df_model['replyCount']
     df_model['high_engagement'] = (df_model['engagement'] > df_model['engagement'].median()).astype(int)
-    
-    features = ['hora', 'dia', 'mes_num', 'retweetCount', 'likeCount', 'replyCount']
+
+    features = ['hora', 'dia', 'mes_num', 'retweetCount']
     X = df_model[features].fillna(0)
     y = df_model['high_engagement']
-    
+
     return train_test_split(X, y, test_size=0.3, random_state=42)
 
 def train_models(X_train, X_test, y_train, y_test):
@@ -96,15 +96,34 @@ def exploration_view(months, days):
 @pn.depends(model_selector.param.value)
 def models_view(selected_model):
     accuracy = models_results[selected_model]['accuracy']
-    
+
+    explanation = """
+    ### Objetivo del Modelo
+
+    Este modelo intenta predecir si un tweet sobre tráfico tendrá **alto engagement** (muchos likes, retweets y replies)
+    basándose en características temporales y en el número de retweets que recibe en tiempo real.
+
+    #### Features utilizados:
+    - **Hora del tweet** (0-23): La hora del día en que se publica
+    - **Día de la semana** (1-7): Lunes, martes, etc.
+    - **Mes del año** (1-12): El mes en que se publica
+    - **Retweet Count**: Cantidad de retweets recibidos
+
+    #### Variable objetivo:
+    - **Alto engagement** (1): Engagement por encima de la mediana
+    - **Bajo engagement** (0): Engagement por debajo de la mediana
+    """
+
     cm = models_results[selected_model]['confusion_matrix']
     fig_cm = px.imshow(cm, text_auto=True, title=f"Matriz de Confusión - {selected_model}", labels=dict(x="Predicción", y="Real", color="Cantidad"), color_continuous_scale='Blues')
-    
+
     report = classification_report(y_test, models_results[selected_model]['predictions'], output_dict=True)
     df_report = pd.DataFrame(report).transpose()
-    
+
     return pn.Column(
+        pn.pane.Markdown(explanation),
         pn.pane.Markdown(f"### Accuracy: {accuracy:.2%}"),
+        pn.pane.Markdown("*Porcentaje de predicciones correctas del modelo en datos de prueba*"),
         pn.Row(
             pn.pane.Plotly(fig_cm, width=500),
             pn.pane.DataFrame(df_report, width=500)
