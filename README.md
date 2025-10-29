@@ -76,13 +76,9 @@ Todos los dashboards incluyen:
 2. Tweets por hora del día
 3. Engagement por mes
 4. Top 10 usuarios más activos
-5. Matriz de confusión del modelo seleccionado
-6. Métricas de clasificación
-7. Tabla comparativa de modelos
-8. Gráfico de comparación de accuracy
+5. Nube de palabras
+6. Matriz de confusión del modelo seleccionado
+7. Métricas de clasificación
+8. Tabla comparativa de modelos
+9. Gráfico de comparación de accuracy
 
-## Notas
-
-- Asegúrese de que el archivo `traficogt_clean.csv` esté en la carpeta `data/`
-- Los modelos se entrenan automáticamente al iniciar cada dashboard
-- La paleta de colores utiliza tonos azules y teals para mantener consistencia visual
