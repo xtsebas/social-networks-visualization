@@ -1,0 +1,10 @@
+streamlit
+pandas
+plotly
+scikit-learn
+dash
+ipywidgets
+panel
+jupyter
+numpy
+voila
