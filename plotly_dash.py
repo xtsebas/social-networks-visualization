@@ -8,6 +8,10 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import confusion_matrix, classification_report, accuracy_score
+from wordcloud import WordCloud
+import matplotlib.pyplot as plt
+import base64
+from io import BytesIO
 
 df = pd.read_csv('data/traficogt_clean.csv')
 df['datetime_gt'] = pd.to_datetime(df['datetime_gt'])
@@ -79,20 +83,30 @@ app.layout = html.Div([
                 html.Div([
                     dcc.Graph(id='tweets-por-dia')
                 ], style={'width': '48%', 'display': 'inline-block'}),
-                
+
                 html.Div([
                     dcc.Graph(id='tweets-por-hora')
                 ], style={'width': '48%', 'float': 'right', 'display': 'inline-block'})
             ]),
-            
+
             html.Div([
                 html.Div([
                     dcc.Graph(id='engagement-por-mes')
                 ], style={'width': '48%', 'display': 'inline-block'}),
-                
+
                 html.Div([
                     dcc.Graph(id='top-usuarios')
                 ], style={'width': '48%', 'float': 'right', 'display': 'inline-block'})
+            ]),
+
+            html.Div([
+                html.Div([
+                    dcc.Graph(id='distribucion-engagement')
+                ], style={'width': '48%', 'display': 'inline-block'}),
+
+                html.Div([
+                    html.Img(id='wordcloud-image', style={'width': '100%', 'height': 'auto'})
+                ], style={'width': '48%', 'float': 'right', 'display': 'inline-block', 'textAlign': 'center'})
             ])
         ]),
         
@@ -168,31 +182,59 @@ app.layout = html.Div([
     ])
 ])
 
+def generate_wordcloud_image(text):
+    """Genera una imagen de wordcloud en base64"""
+    try:
+        if not text or len(text.strip()) == 0:
+            return 'data:image/png;base64,'
+        wordcloud = WordCloud(width=800, height=400, background_color='white', colormap='Blues').generate(text)
+        buffer = BytesIO()
+        wordcloud.to_image().save(buffer, format='PNG')
+        buffer.seek(0)
+        img_str = base64.b64encode(buffer.read()).decode()
+        return f'data:image/png;base64,{img_str}'
+    except:
+        return 'data:image/png;base64,'
+
 @app.callback(
     [Output('tweets-por-dia', 'figure'),
      Output('tweets-por-hora', 'figure'),
      Output('engagement-por-mes', 'figure'),
-     Output('top-usuarios', 'figure')],
+     Output('top-usuarios', 'figure'),
+     Output('distribucion-engagement', 'figure'),
+     Output('wordcloud-image', 'src')],
     [Input('month-selector', 'value'),
      Input('day-selector', 'value')]
 )
 def update_exploration(selected_months, selected_days):
     df_filtered = df[df['mes_nombre'].isin(selected_months) & df['dia_semana'].isin(selected_days)]
-    
+
     tweets_por_dia = df_filtered.groupby('dia_semana').size().reindex(['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'])
     fig1 = px.bar(x=tweets_por_dia.index, y=tweets_por_dia.values, title="Tweets por Día de la Semana", labels={'x': 'Día', 'y': 'Cantidad'}, color=tweets_por_dia.values, color_continuous_scale='Blues')
-    
+
     tweets_por_hora = df_filtered.groupby('hora').size()
     fig2 = px.line(x=tweets_por_hora.index, y=tweets_por_hora.values, title="Tweets por Hora del Día", labels={'x': 'Hora', 'y': 'Cantidad'}, markers=True)
     fig2.update_traces(line_color='#1f77b4')
-    
+
     engagement_por_mes = df_filtered.groupby('mes_nombre')[['likeCount', 'retweetCount', 'replyCount']].sum()
     fig3 = px.bar(engagement_por_mes, x=engagement_por_mes.index, y=['likeCount', 'retweetCount', 'replyCount'], title="Engagement por Mes", labels={'value': 'Cantidad', 'variable': 'Tipo', 'mes_nombre': 'Mes'}, barmode='group')
-    
+
     top_users = df_filtered['user.username'].value_counts().head(10)
     fig4 = px.bar(x=top_users.values, y=top_users.index, orientation='h', title="Top 10 Usuarios más Activos", labels={'x': 'Tweets', 'y': 'Usuario'}, color=top_users.values, color_continuous_scale='Teal')
-    
-    return fig1, fig2, fig3, fig4
+
+    # Gráfico de distribución de engagement
+    df_filtered['engagement_total'] = df_filtered['likeCount'] + df_filtered['retweetCount'] + df_filtered['replyCount']
+    fig5 = px.histogram(df_filtered, x='engagement_total', nbins=30, title="Distribución del Engagement Total", labels={'engagement_total': 'Engagement Total', 'count': 'Cantidad de Tweets'}, color_discrete_sequence=['#1f77b4'])
+    fig5.update_layout(showlegend=False)
+
+    # Nube de palabras
+    if len(df_filtered) > 0 and df_filtered['clean_text'].notna().sum() > 0:
+        text = ' '.join(df_filtered['clean_text'].dropna().astype(str))
+        wordcloud_src = generate_wordcloud_image(text)
+    else:
+        wordcloud_src = 'data:image/png;base64,'
+
+    return fig1, fig2, fig3, fig4, fig5, wordcloud_src
 
 @app.callback(
     [Output('accuracy-text', 'children'),

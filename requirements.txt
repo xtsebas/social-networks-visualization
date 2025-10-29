@@ -8,3 +8,4 @@ panel
 jupyter
 numpy
 voila
+wordcloud

@@ -7,6 +7,8 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import confusion_matrix, classification_report, accuracy_score
+from wordcloud import WordCloud
+import matplotlib.pyplot as plt
 
 pn.extension('plotly')
 
@@ -74,23 +76,39 @@ comparison_selector = pn.widgets.MultiChoice(
 @pn.depends(month_selector.param.value, day_selector.param.value)
 def exploration_view(months, days):
     df_filtered = df[df['mes_nombre'].isin(months) & df['dia_semana'].isin(days)]
-    
+
     tweets_por_dia = df_filtered.groupby('dia_semana').size().reindex(['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'])
     fig1 = px.bar(x=tweets_por_dia.index, y=tweets_por_dia.values, title="Tweets por Día de la Semana", labels={'x': 'Día', 'y': 'Cantidad'}, color=tweets_por_dia.values, color_continuous_scale='Blues')
-    
+
     tweets_por_hora = df_filtered.groupby('hora').size()
     fig2 = px.line(x=tweets_por_hora.index, y=tweets_por_hora.values, title="Tweets por Hora del Día", labels={'x': 'Hora', 'y': 'Cantidad'}, markers=True)
     fig2.update_traces(line_color='#1f77b4')
-    
+
     engagement_por_mes = df_filtered.groupby('mes_nombre')[['likeCount', 'retweetCount', 'replyCount']].sum()
     fig3 = px.bar(engagement_por_mes, x=engagement_por_mes.index, y=['likeCount', 'retweetCount', 'replyCount'], title="Engagement por Mes", labels={'value': 'Cantidad', 'variable': 'Tipo', 'mes_nombre': 'Mes'}, barmode='group')
-    
+
     top_users = df_filtered['user.username'].value_counts().head(10)
     fig4 = px.bar(x=top_users.values, y=top_users.index, orientation='h', title="Top 10 Usuarios más Activos", labels={'x': 'Tweets', 'y': 'Usuario'}, color=top_users.values, color_continuous_scale='Teal')
-    
+
+    # Gráfico de distribución de engagement
+    df_filtered['engagement_total'] = df_filtered['likeCount'] + df_filtered['retweetCount'] + df_filtered['replyCount']
+    fig5 = px.histogram(df_filtered, x='engagement_total', nbins=30, title="Distribución del Engagement Total", labels={'engagement_total': 'Engagement Total', 'count': 'Cantidad de Tweets'}, color_discrete_sequence=['#1f77b4'])
+    fig5.update_layout(showlegend=False)
+
+    # Nube de palabras
+    wordcloud_pane = pn.pane.Markdown("*Generando nube de palabras...*")
+    if len(df_filtered) > 0 and df_filtered['clean_text'].notna().sum() > 0:
+        text = ' '.join(df_filtered['clean_text'].dropna().astype(str))
+        wordcloud = WordCloud(width=800, height=400, background_color='white', colormap='Blues').generate(text)
+        fig_wc, ax = plt.subplots(figsize=(10, 6))
+        ax.imshow(wordcloud, interpolation='bilinear')
+        ax.axis('off')
+        wordcloud_pane = pn.pane.Matplotlib(fig_wc, tight=True)
+
     return pn.Column(
         pn.Row(pn.pane.Plotly(fig1), pn.pane.Plotly(fig2)),
-        pn.Row(pn.pane.Plotly(fig3), pn.pane.Plotly(fig4))
+        pn.Row(pn.pane.Plotly(fig3), pn.pane.Plotly(fig4)),
+        pn.Row(pn.pane.Plotly(fig5), wordcloud_pane)
     )
 
 @pn.depends(model_selector.param.value)

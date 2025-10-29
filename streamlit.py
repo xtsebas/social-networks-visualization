@@ -9,6 +9,8 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import confusion_matrix, classification_report, accuracy_score
 from sklearn.preprocessing import LabelEncoder
 import numpy as np
+from wordcloud import WordCloud
+import matplotlib.pyplot as plt
 
 st.set_page_config(page_title="Dashboard TraficoGT", layout="wide")
 
@@ -82,16 +84,36 @@ with tab1:
         st.plotly_chart(fig2, use_container_width=True)
     
     col3, col4 = st.columns(2)
-    
+
     with col3:
         engagement_por_mes = df_filtered.groupby('mes_nombre')[['likeCount', 'retweetCount', 'replyCount']].sum()
         fig3 = px.bar(engagement_por_mes, x=engagement_por_mes.index, y=['likeCount', 'retweetCount', 'replyCount'], title="Engagement por Mes", labels={'value': 'Cantidad', 'variable': 'Tipo', 'mes_nombre': 'Mes'}, barmode='group')
         st.plotly_chart(fig3, use_container_width=True)
-    
+
     with col4:
         top_users = df_filtered['user.username'].value_counts().head(10)
         fig4 = px.bar(x=top_users.values, y=top_users.index, orientation='h', title="Top 10 Usuarios más Activos", labels={'x': 'Tweets', 'y': 'Usuario'}, color=top_users.values, color_continuous_scale='Teal')
         st.plotly_chart(fig4, use_container_width=True)
+
+    col5, col6 = st.columns(2)
+
+    with col5:
+        df_filtered['engagement_total'] = df_filtered['likeCount'] + df_filtered['retweetCount'] + df_filtered['replyCount']
+        fig5 = px.histogram(df_filtered, x='engagement_total', nbins=30, title="Distribución del Engagement Total", labels={'engagement_total': 'Engagement Total', 'count': 'Cantidad de Tweets'}, color_discrete_sequence=['#1f77b4'])
+        fig5.update_layout(showlegend=False)
+        st.plotly_chart(fig5, use_container_width=True)
+
+    with col6:
+        st.subheader("Nube de Palabras - Contenido de Tweets")
+        if len(df_filtered) > 0 and df_filtered['clean_text'].notna().sum() > 0:
+            text = ' '.join(df_filtered['clean_text'].dropna().astype(str))
+            wordcloud = WordCloud(width=800, height=400, background_color='white', colormap='Blues').generate(text)
+            fig_wc, ax = plt.subplots(figsize=(10, 6))
+            ax.imshow(wordcloud, interpolation='bilinear')
+            ax.axis('off')
+            st.pyplot(fig_wc, use_container_width=True)
+        else:
+            st.info("No hay datos disponibles para generar la nube de palabras")
 
 with tab2:
     st.header("Modelos Predictivos")
