@@ -31,6 +31,8 @@ streamlit run streamlit.py
 ```
 
 Se abrirá automáticamente en el navegador en `http://localhost:8501`
+<img width="1897" height="990" alt="image" src="https://github.com/user-attachments/assets/e7d93621-fe8c-4e29-a809-dfec5c808aa1" />
+
 
 ### 2. Plotly Dash
 
@@ -39,6 +41,8 @@ python plotly_dash.py
 ```
 
 Abrir el navegador en `http://127.0.0.1:8050`
+<img width="1887" height="984" alt="image" src="https://github.com/user-attachments/assets/65aeff52-e4f1-4202-9d7c-1d809772a1dc" />
+
 
 ### 3. Voila
 
@@ -57,6 +61,8 @@ panel serve panel.py --show
 ```
 
 Se abrirá automáticamente en el navegador en `http://localhost:5006`
+<img width="1918" height="951" alt="image" src="https://github.com/user-attachments/assets/fc3a67e7-8b26-43ef-8c42-bcc7f89dceb2" />
+
 
 ## Características de cada Dashboard
 
